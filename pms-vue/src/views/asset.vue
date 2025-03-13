@@ -232,7 +232,7 @@ const handleAdd = () => {
   // 在下一个事件循环中重置表单验证
   setTimeout(() => {
     if (assetFormRef.value) {
-      assetFormRef.value.resetFields()
+      assetFormRef.value.clearValidate()
     }
   }, 0)
 }
@@ -247,7 +247,7 @@ const handleEdit = (row) => {
   assetForm.location = row.location
   assetForm.status = row.status
   assetForm.purchase_date = row.purchase_date
-  assetForm.description = row.description
+  assetForm.description = row.description || ''
   dialogVisible.value = true
   // 在下一个事件循环中重置表单验证
   setTimeout(() => {
@@ -293,7 +293,8 @@ const handleSubmit = async () => {
     
     // 如果有日期，添加到提交数据中
     if (assetForm.purchase_date) {
-      submitData.purchase_date = new Date(assetForm.purchase_date)
+      // 确保日期格式正确
+      submitData.purchase_date = new Date(assetForm.purchase_date).toISOString().split('T')[0]
     }
     
     if (dialogType.value === 'add') {
