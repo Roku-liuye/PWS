@@ -1,0 +1,196 @@
+<template>
+  <div class="notice-container">
+    <div class="notice-header">
+      <h2>公告管理</h2>
+      <el-button type="primary" @click="handlePublish">
+        <el-icon><Plus /></el-icon>发布公告
+      </el-button>
+    </div>
+
+    <el-card class="notice-content">
+      <el-form :inline="true" :model="queryParams" class="search-form">
+        <el-form-item label="标题">
+          <el-input v-model="queryParams.title" placeholder="请输入公告标题" clearable />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="queryParams.status" placeholder="请选择状态" clearable>
+            <el-option label="已发布" value="published" />
+            <el-option label="草稿" value="draft" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleQuery">
+            <el-icon><Search /></el-icon>搜索
+          </el-button>
+          <el-button @click="resetQuery">
+            <el-icon><Refresh /></el-icon>重置
+          </el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-table :data="noticeList" border style="width: 100%">
+        <el-table-column prop="id" label="编号" width="80" />
+        <el-table-column prop="title" label="标题" show-overflow-tooltip />
+        <el-table-column prop="publisher" label="发布人" width="120" />
+        <el-table-column prop="publishTime" label="发布时间" width="160" />
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="scope">
+            <el-tag :type="scope.row.status === 'published' ? 'success' : 'info'">
+              {{ scope.row.status === 'published' ? '已发布' : '草稿' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right">
+          <template #default="scope">
+            <el-button-group>
+              <el-button type="primary" link @click="handleEdit(scope.row)">
+                <el-icon><Edit /></el-icon>编辑
+              </el-button>
+              <el-button type="primary" link @click="handleView(scope.row)">
+                <el-icon><View /></el-icon>查看
+              </el-button>
+              <el-button type="danger" link @click="handleDelete(scope.row)">
+                <el-icon><Delete /></el-icon>删除
+              </el-button>
+            </el-button-group>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="queryParams.pageNum"
+          v-model:page-size="queryParams.pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 30, 50]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
+    </el-card>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { Plus, Edit, Delete, Search, Refresh, View } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+
+// 查询参数
+const queryParams = ref({
+  title: '',
+  status: '',
+  pageNum: 1,
+  pageSize: 10
+})
+
+// 公告列表数据
+const noticeList = ref([])
+const total = ref(0)
+
+// 导入API
+import { noticeApi } from '../api/index.js'
+
+// 查询公告列表
+const handleQuery = async () => {
+  try {
+    const res = await noticeApi.getNoticeList(queryParams.value)
+    noticeList.value = res.items || []
+    total.value = res.total || 0
+  } catch (error) {
+    console.error('获取公告列表失败：', error)
+    ElMessage.error('获取公告列表失败')
+  }
+}
+
+// 重置查询条件
+const resetQuery = () => {
+  queryParams.value = {
+    title: '',
+    status: '',
+    pageNum: 1,
+    pageSize: 10
+  }
+  handleQuery()
+}
+
+// 发布公告
+const handlePublish = async () => {
+  // TODO: 实现发布公告功能
+  console.log('发布公告')
+}
+
+// 编辑公告
+const handleEdit = (row) => {
+  // TODO: 实现编辑公告功能
+  console.log('编辑公告：', row)
+}
+
+// 查看公告
+const handleView = (row) => {
+  // TODO: 实现查看公告功能
+  console.log('查看公告：', row)
+}
+
+// 删除公告
+const handleDelete = (row) => {
+  ElMessageBox.confirm(`确认删除标题为"${row.title}"的公告吗？`, '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      await noticeApi.deleteNotice(row.id)
+      ElMessage.success('删除成功')
+      handleQuery()
+    } catch (error) {
+      console.error('删除公告失败：', error)
+      ElMessage.error('删除失败')
+    }
+  }).catch(() => {})
+}
+
+// 分页大小改变
+const handleSizeChange = (val) => {
+  queryParams.value.pageSize = val
+  handleQuery()
+}
+
+// 当前页改变
+const handleCurrentChange = (val) => {
+  queryParams.value.pageNum = val
+  handleQuery()
+}
+
+onMounted(() => {
+  handleQuery()
+})
+</script>
+
+<style scoped>
+.notice-container {
+  padding: 20px;
+}
+
+.notice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.notice-content {
+  background-color: #fff;
+}
+
+.search-form {
+  margin-bottom: 20px;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+</style>
