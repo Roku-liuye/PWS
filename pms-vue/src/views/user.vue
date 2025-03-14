@@ -13,7 +13,7 @@
           <el-input v-model="queryParams.username" placeholder="请输入用户名" clearable />
         </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="queryParams.role" placeholder="请选择角色" clearable>
+          <el-select style="min-width: 160px" v-model="queryParams.role" placeholder="请选择角色" clearable>
             <el-option label="管理员" value="admin" />
             <el-option label="维修人员" value="maintainer" />
             <el-option label="普通用户" value="user" />
@@ -79,6 +79,39 @@
         />
       </div>
     </el-card>
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="resetForm">
+      <el-form ref="userFormRef" :model="userForm" :rules="rules" label-width="80px">
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="userForm.username" placeholder="请输入用户名" />
+        </el-form-item>
+        <el-form-item label="密码" prop="password">
+          <el-input v-model="userForm.password" type="password" placeholder="请输入密码" />
+        </el-form-item>
+        <el-form-item label="角色" prop="role">
+          <el-select v-model="userForm.role" placeholder="请选择角色">
+            <el-option label="管理员" value="admin" />
+            <el-option label="维修人员" value="staff" />
+            <el-option label="教师" value="teacher" />
+            <el-option label="学生" value="student" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="姓名" prop="real_name">
+          <el-input v-model="userForm.real_name" placeholder="请输入姓名" />
+        </el-form-item>
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="userForm.phone" placeholder="请输入手机号" />
+        </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="userForm.email" placeholder="请输入邮箱" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitForm">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -147,70 +180,84 @@ const resetQuery = () => {
   handleQuery()
 }
 
-// 新增用户
-const handleAdd = () => {
-  // TODO: 实现新增用户功能
-  console.log('新增用户')
-}
+// 对话框相关数据
+const dialogVisible = ref(false)
+const dialogTitle = ref('')
+const userFormRef = ref()
+const userForm = ref({
+  username: '',
+  password: '',
+  role: '',
+  real_name: '',
+  phone: '',
+  email: ''
+})
 
-// 编辑用户
-const handleEdit = (row) => {
-  // TODO: 实现编辑用户功能
-  console.log('编辑用户：', row)
-}
-
-// 重置密码
-const handleResetPwd = (row) => {
-  ElMessageBox.confirm(`确认重置用户"${row.username}"的密码吗？`, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      // TODO: 调用后端API重置密码
-      // await userApi.resetPassword(row.id)
-      ElMessage.success('密码重置成功')
-    } catch (error) {
-      console.error('密码重置失败：', error)
-      ElMessage.error('密码重置失败')
-    }
-  }).catch(() => {})
-}
-
-// 切换用户状态
-const handleToggleStatus = (row) => {
-  const action = row.status === 'active' ? '禁用' : '启用'
-  ElMessageBox.confirm(`确认${action}用户"${row.username}"吗？`, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      // TODO: 调用后端API修改用户状态
-      // await userApi.updateUser(row.id, { status: row.status === 'active' ? 'inactive' : 'active' })
-      ElMessage.success(`${action}成功`)
-    } catch (error) {
-      console.error(`${action}用户失败：`, error)
-      ElMessage.error(`${action}失败`)
-    }
-  }).catch(() => {})
-}
-
-// 分页大小改变
-const handleSizeChange = (val) => {
-  queryParams.value.pageSize = val
-  handleQuery()
-}
-
-// 当前页改变
-const handleCurrentChange = (val) => {
-  queryParams.value.pageNum = val
-  handleQuery()
-}
-
+// 在组件挂载时获取用户列表
 onMounted(() => {
   handleQuery()
 })
+
+// 表单验证规则
+const rules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, max: 20, message: '长度在 6 到 20 个字符', trigger: 'blur' }
+  ],
+  role: [
+    { required: true, message: '请选择角色', trigger: 'change' }
+  ],
+  real_name: [
+    { required: true, message: '请输入姓名', trigger: 'blur' }
+  ],
+  phone: [
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
+  ],
+  email: [
+    { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+  ]
+}
+
+// 重置表单
+const resetForm = () => {
+  userFormRef.value?.resetFields()
+  userForm.value = {
+    username: '',
+    password: '',
+    role: '',
+    real_name: '',
+    phone: '',
+    email: ''
+  }
+}
+
+// 新增用户
+const handleAdd = () => {
+  dialogTitle.value = '新增用户'
+  dialogVisible.value = true
+}
+
+// 提交表单
+const submitForm = async () => {
+  if (!userFormRef.value) return
+  await userFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        await userApi.createUser(userForm.value)
+        ElMessage.success('新增用户成功')
+        dialogVisible.value = false
+        handleQuery()
+      } catch (error) {
+        console.error('新增用户失败：', error)
+        ElMessage.error('新增用户失败：' + (error.message || '未知错误'))
+      }
+    }
+  })
+}
 </script>
 
 <style scoped>

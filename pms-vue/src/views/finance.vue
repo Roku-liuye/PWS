@@ -10,7 +10,7 @@
     <el-card class="finance-content">
       <el-form :inline="true" :model="queryParams" class="search-form">
         <el-form-item label="费用类型">
-          <el-select v-model="queryParams.type" placeholder="请选择费用类型" clearable>
+          <el-select style="min-width: 160px" v-model="queryParams.type" placeholder="请选择费用类型" clearable>
             <el-option label="设备采购" value="purchase" />
             <el-option label="维修费用" value="repair" />
             <el-option label="能源消耗" value="energy" />

@@ -13,7 +13,6 @@
           <el-input v-model="queryParams.name" placeholder="请输入资产名称" clearable />
         </el-form-item>
         <el-form-item label="资产类型">
-
           <el-select style="width: 160px" v-model="queryParams.type" placeholder="请选择资产类型" clearable>
             <el-option v-for="type in assetTypes" :key="type" :label="type" :value="type"></el-option>
           </el-select>
@@ -288,13 +287,8 @@ const handleSubmit = async () => {
       type: assetForm.type,
       status: assetForm.status,
       location: assetForm.location,
-      description: assetForm.description
-    }
-    
-    // 如果有日期，添加到提交数据中
-    if (assetForm.purchase_date) {
-      // 确保日期格式正确
-      submitData.purchase_date = new Date(assetForm.purchase_date).toISOString().split('T')[0]
+      description: assetForm.description,
+      purchase_date: assetForm.purchase_date ? new Date(assetForm.purchase_date).toISOString() : null
     }
     
     if (dialogType.value === 'add') {
@@ -308,7 +302,13 @@ const handleSubmit = async () => {
     getList()
   } catch (error) {
     console.error('操作失败：', error)
-    ElMessage.error(error.message || '操作失败')
+    let errorMessage = '操作失败'
+    if (error.response && error.response.data && error.response.data.detail) {
+      errorMessage = error.response.data.detail
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+    ElMessage.error(errorMessage)
   }
 }
 

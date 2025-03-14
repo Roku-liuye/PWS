@@ -13,7 +13,7 @@
           <el-input v-model="queryParams.roomNo" placeholder="请输入教室编号" clearable />
         </el-form-item>
         <el-form-item label="教学楼">
-          <el-select v-model="queryParams.building" placeholder="请选择教学楼" clearable>
+          <el-select style="min-width: 160px" v-model="queryParams.building" placeholder="请选择教学楼" clearable>
             <el-option label="A教学楼" value="A" />
             <el-option label="B教学楼" value="B" />
             <el-option label="C教学楼" value="C" />
@@ -138,6 +138,7 @@
 import { ref, onMounted } from 'vue'
 import { Plus, Search, Refresh, View, Calendar } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { classroomApi } from '../api/index.js'
 
 // 查询参数
 const queryParams = ref({
@@ -155,23 +156,9 @@ const total = ref(0)
 // 获取教室列表数据
 const getList = async () => {
   try {
-    // TODO: 调用后端API获取数据
-    // const { data } = await getClassroomList(queryParams.value)
-    // classroomList.value = data.list
-    // total.value = data.total
-
-    // 模拟数据
-    classroomList.value = [
-      {
-        roomNo: 'A101',
-        building: 'A教学楼',
-        type: 'multimedia',
-        capacity: 120,
-        facilities: '多媒体设备、空调、投影仪',
-        status: 'available'
-      }
-    ]
-    total.value = 1
+    const { data } = await classroomApi.getClassroomList(queryParams.value)
+    classroomList.value = data.list
+    total.value = data.total
   } catch (error) {
     console.error('获取教室列表失败：', error)
     ElMessage.error('获取教室列表失败')
@@ -239,8 +226,7 @@ const submitBooking = async () => {
   await bookingFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        // TODO: 调用后端API提交预约
-        // await submitBookingForm(bookingForm.value)
+        await classroomApi.submitBooking(bookingForm.value)
         ElMessage.success('预约成功')
         bookingFormVisible.value = false
         getList()

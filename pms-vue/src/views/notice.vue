@@ -13,7 +13,7 @@
           <el-input v-model="queryParams.title" placeholder="请输入公告标题" clearable />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryParams.status" placeholder="请选择状态" clearable>
+          <el-select style="min-width: 160px" v-model="queryParams.status" placeholder="请选择状态" clearable>
             <el-option label="已发布" value="published" />
             <el-option label="草稿" value="draft" />
           </el-select>
@@ -31,8 +31,12 @@
       <el-table :data="noticeList" border style="width: 100%">
         <el-table-column prop="id" label="编号" width="80" />
         <el-table-column prop="title" label="标题" show-overflow-tooltip />
-        <el-table-column prop="publisher" label="发布人" width="120" />
-        <el-table-column prop="publishTime" label="发布时间" width="160" />
+        <el-table-column prop="publisher_id" label="发布人" width="120" />
+        <el-table-column prop="publish_time" label="发布时间" width="160">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.publish_time) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="scope">
             <el-tag :type="scope.row.status === 'published' ? 'success' : 'info'">
@@ -69,11 +73,70 @@
         />
       </div>
     </el-card>
+
+    <!-- 公告对话框 -->
+    <el-dialog
+      :title="dialogTitle"
+      v-model="dialogVisible"
+      width="50%"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="noticeFormRef"
+        :model="noticeForm"
+        :rules="noticeRules"
+        label-width="80px"
+      >
+        <el-form-item label="标题" prop="title">
+          <el-input v-model="noticeForm.title" placeholder="请输入公告标题" />
+        </el-form-item>
+        <el-form-item label="内容" prop="content">
+          <el-input
+            v-model="noticeForm.content"
+            type="textarea"
+            :rows="6"
+            placeholder="请输入公告内容"
+          />
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-radio-group v-model="noticeForm.status">
+            <el-radio label="published">发布</el-radio>
+            <el-radio label="draft">草稿</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitForm">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 查看公告对话框 -->
+    <el-dialog
+      title="查看公告"
+      v-model="viewDialogVisible"
+      width="50%"
+    >
+      <div class="view-notice">
+        <h3>{{ viewNotice.title }}</h3>
+        <div class="notice-info">
+          <span>发布人：{{ viewNotice.publisher_id }}</span>
+          <span>发布时间：{{ formatDateTime(viewNotice.publish_time) }}</span>
+          <span>状态：{{ viewNotice.status === 'published' ? '已发布' : '草稿' }}</span>
+        </div>
+        <div class="notice-content">
+          {{ viewNotice.content }}
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import dayjs from 'dayjs'
 import { Plus, Edit, Delete, Search, Refresh, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -89,9 +152,32 @@ const queryParams = ref({
 const noticeList = ref([])
 const total = ref(0)
 
+// 对话框相关
+const dialogVisible = ref(false)
+const dialogTitle = ref('')
+const viewDialogVisible = ref(false)
+const viewNotice = ref({})
+const noticeFormRef = ref()
+const noticeForm = ref({
+  title: '',
+  content: '',
+  status: 'published'
+})
+
+// 表单验证规则
+const noticeRules = {
+  title: [{ required: true, message: '请输入公告标题', trigger: 'blur' }],
+  content: [{ required: true, message: '请输入公告内容', trigger: 'blur' }],
+  status: [{ required: true, message: '请选择公告状态', trigger: 'change' }]
+}
+
 // 导入API
 import { noticeApi } from '../api/index.js'
 
+
+const formatDateTime = (time) => {
+  return time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : ''
+}
 // 查询公告列表
 const handleQuery = async () => {
   try {
@@ -115,22 +201,59 @@ const resetQuery = () => {
   handleQuery()
 }
 
+// 重置表单
+const resetForm = () => {
+  noticeForm.value = {
+    title: '',
+    content: '',
+    status: 'published'
+  }
+  noticeFormRef.value?.resetFields()
+}
+
 // 发布公告
-const handlePublish = async () => {
-  // TODO: 实现发布公告功能
-  console.log('发布公告')
+const handlePublish = () => {
+  dialogTitle.value = '发布公告'
+  dialogVisible.value = true
+  resetForm()
 }
 
 // 编辑公告
 const handleEdit = (row) => {
-  // TODO: 实现编辑公告功能
-  console.log('编辑公告：', row)
+  dialogTitle.value = '编辑公告'
+  dialogVisible.value = true
+  noticeForm.value = { ...row }
 }
 
 // 查看公告
 const handleView = (row) => {
-  // TODO: 实现查看公告功能
-  console.log('查看公告：', row)
+  viewNotice.value = row
+  viewDialogVisible.value = true
+}
+
+// 提交表单
+const submitForm = async () => {
+  if (!noticeFormRef.value) return
+  await noticeFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        if (noticeForm.value.id) {
+          // 更新公告
+          await noticeApi.updateNotice(noticeForm.value.id, noticeForm.value)
+          ElMessage.success('更新成功')
+        } else {
+          // 创建公告
+          await noticeApi.createNotice(noticeForm.value)
+          ElMessage.success('发布成功')
+        }
+        dialogVisible.value = false
+        handleQuery()
+      } catch (error) {
+        console.error('操作失败：', error)
+        ElMessage.error('操作失败')
+      }
+    }
+  })
 }
 
 // 删除公告
@@ -192,5 +315,28 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.view-notice {
+  padding: 20px;
+}
+
+.view-notice h3 {
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.notice-info {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+  color: #666;
+}
+
+.notice-content {
+  padding: 15px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  white-space: pre-wrap;
 }
 </style>

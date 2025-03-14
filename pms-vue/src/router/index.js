@@ -93,13 +93,16 @@ router.beforeEach((to, from, next) => {
   
   // 如果访问的是登录或注册页面，直接放行
   if (to.path === '/login' || to.path === '/register') {
-    next()
+    if (token) {
+      next('/')
+    } else {
+      next()
+    }
   } else {
     // 如果没有token，重定向到登录页面
     if (!token) {
       next('/login')
     } else {
-      // 有token，放行
       next()
     }
   }

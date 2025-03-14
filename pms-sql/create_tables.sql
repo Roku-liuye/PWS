@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- 资产表
 CREATE TABLE IF NOT EXISTS assets (
-    id VARCHAR(20) PRIMARY KEY,
+    id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     type VARCHAR(50) NOT NULL,
     location VARCHAR(100),
@@ -32,9 +32,9 @@ CREATE TABLE IF NOT EXISTS assets (
 
 -- 报修表
 CREATE TABLE IF NOT EXISTS repairs (
-    id VARCHAR(20) PRIMARY KEY,
+    id INT PRIMARY KEY AUTO_INCREMENT,
     type ENUM('equipment', 'facility') NOT NULL,
-    asset_id VARCHAR(20),
+    asset_id INT(20),
     location VARCHAR(100) NOT NULL,
     description TEXT NOT NULL,
     submitter_id INT NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS repairs (
 -- 维修分配表
 CREATE TABLE IF NOT EXISTS maintenance (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    repair_id VARCHAR(20) NOT NULL,
+    repair_id INT NOT NULL,
     maintainer_id INT NOT NULL,
     assign_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     expected_time DATETIME,

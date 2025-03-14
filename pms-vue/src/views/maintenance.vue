@@ -7,21 +7,24 @@
     <el-card class="maintenance-content">
       <el-form :inline="true" :model="queryParams" class="search-form">
         <el-form-item label="报修编号">
-          <el-input v-model="queryParams.repairNo" placeholder="请输入报修编号" clearable />
+          <el-input v-model="queryParams.id" placeholder="请输入报修编号" clearable />
         </el-form-item>
         <el-form-item label="维修状态">
-          <el-select v-model="queryParams.status" placeholder="请选择维修状态" clearable>
-            <el-option label="待分配" value="unassigned" />
-            <el-option label="已分配" value="assigned" />
+          <el-select style="min-width: 160px" v-model="queryParams.status" placeholder="请选择维修状态" clearable>
+            <el-option label="待分配" value="pending" />
             <el-option label="维修中" value="processing" />
             <el-option label="已完成" value="completed" />
+            <el-option label="已取消" value="cancelled" />
           </el-select>
         </el-form-item>
-        <el-form-item label="维修人员">
+        <el-form-item style="min-width: 160px" label="维修人员">
           <el-select v-model="queryParams.maintainer" placeholder="请选择维修人员" clearable>
-            <el-option label="张三" value="zhangsan" />
-            <el-option label="李四" value="lisi" />
-            <el-option label="王五" value="wangwu" />
+            <el-option
+              v-for="maintainer in maintainerList"
+              :key="maintainer.id"
+              :label="maintainer.real_name"
+              :value="maintainer.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -35,17 +38,14 @@
       </el-form>
 
       <el-table :data="maintenanceList" border style="width: 100%">
-        <el-table-column prop="repairNo" label="报修编号" width="120" />
-        <el-table-column prop="type" label="报修类型" width="120">
-          <template #default="scope">
-            <el-tag :type="scope.row.type === 'equipment' ? 'primary' : 'success'">
-              {{ scope.row.type === 'equipment' ? '设备维修' : '设施维修' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="location" label="报修地点" width="150" />
-        <el-table-column prop="description" label="故障描述" show-overflow-tooltip />
-        <el-table-column prop="submitTime" label="提交时间" width="160" />
+        <el-table-column prop="id" label="报修编号" width="120" />
+        <el-table-column prop="repair_id" label="报修编号" width="120" />
+        <el-table-column prop="assign_time" label="分配时间" width="160" />
+        <el-table-column prop="expected_time" label="预计完成时间" width="160" />
+        <el-table-column prop="actual_time" label="实际完成时间" width="160" />
+        <el-table-column prop="result" label="维修结果" show-overflow-tooltip />
+        <el-table-column prop="assign_time" label="分配时间" width="160" />
+        <el-table-column prop="expected_time" label="预计完成时间" width="160" />
         <el-table-column prop="status" label="维修状态" width="120">
           <template #default="scope">
             <el-tag :type="getStatusType(scope.row.status)">
@@ -53,11 +53,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="maintainer" label="维修人员" width="120" />
+        <el-table-column prop="maintainer_name" label="维修人员" width="120" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="scope">
             <el-button-group>
-              <el-button type="primary" link @click="handleAssign(scope.row)" v-if="scope.row.status === 'unassigned'">
+              <el-button type="primary" link @click="handleAssign(scope.row)" v-if="scope.row.status === 'pending'">
                 <el-icon><UserFilled /></el-icon>分配
               </el-button>
               <el-button type="success" link @click="handleComplete(scope.row)" v-if="scope.row.status === 'processing'">
@@ -73,8 +73,8 @@
 
       <div class="pagination">
         <el-pagination
-          v-model:current-page="queryParams.pageNum"
-          v-model:page-size="queryParams.pageSize"
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.page_size"
           :total="total"
           :page-sizes="[10, 20, 30, 50]"
           layout="total, sizes, prev, pager, next, jumper"
@@ -92,16 +92,26 @@
       append-to-body
     >
       <el-form ref="assignFormRef" :model="assignForm" :rules="assignRules" label-width="100px">
-        <el-form-item label="维修人员" prop="maintainer">
-          <el-select v-model="assignForm.maintainer" placeholder="请选择维修人员">
-            <el-option label="张三" value="zhangsan" />
-            <el-option label="李四" value="lisi" />
-            <el-option label="王五" value="wangwu" />
+        <el-form-item label="维修人员" prop="maintainer_id">
+          <el-select v-model="assignForm.maintainer_id" placeholder="请选择维修人员">
+            <el-option
+              v-for="maintainer in maintainerList"
+              :key="maintainer.id"
+              :label="maintainer.real_name"
+              :value="maintainer.id"
+            />
           </el-select>
         </el-form-item>
-        <el-form-item label="备注" prop="remark">
+        <el-form-item label="预计完成时间" prop="expected_time">
+          <el-date-picker
+            v-model="assignForm.expected_time"
+            type="datetime"
+            placeholder="请选择预计完成时间"
+          />
+        </el-form-item>
+        <el-form-item label="备注" prop="result">
           <el-input
-            v-model="assignForm.remark"
+            v-model="assignForm.result"
             type="textarea"
             placeholder="请输入备注信息"
             :rows="3"
@@ -122,41 +132,47 @@
 import { ref, onMounted } from 'vue'
 import { Search, Refresh, View, UserFilled, Select } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { maintenanceApi } from '../api/index.js'
 
 // 查询参数
 const queryParams = ref({
-  repairNo: '',
+  id: '',
   status: '',
-  maintainer: '',
-  pageNum: 1,
-  pageSize: 10
+  maintainer_id: '',
+  page: 1,
+  page_size: 10
 })
 
 // 维修列表数据
 const maintenanceList = ref([])
 const total = ref(0)
+const maintainerList = ref([])
+
+// 获取维修人员列表
+const getMaintainers = async () => {
+  try {
+    const res = await maintenanceApi.getMaintainers({ role: 'staff' })
+    maintainerList.value = res.items
+  } catch (error) {
+    console.error('获取维修人员列表失败：', error)
+    ElMessage.error('获取维修人员列表失败')
+  }
+}
 
 // 获取维修列表数据
 const getList = async () => {
   try {
-    // TODO: 调用后端API获取数据
-    // const { data } = await getMaintenanceList(queryParams.value)
-    // maintenanceList.value = data.list
-    // total.value = data.total
-
-    // 模拟数据
-    maintenanceList.value = [
-      {
-        repairNo: 'R2024001',
-        type: 'equipment',
-        location: '教学楼A101',
-        description: '投影仪无法开机',
-        submitTime: '2024-01-10 14:30:00',
-        status: 'unassigned',
-        maintainer: '-'
-      }
-    ]
-    total.value = 1
+    const res = await maintenanceApi.getMaintenanceList(queryParams.value)
+    if (res && res.items) {
+      maintenanceList.value = res.items.map(item => ({
+        ...item,
+        maintainer_name: maintainerList.value.find(m => m.id === item.maintainer_id)?.real_name || '未分配'
+      }))
+      total.value = res.total
+    } else {
+      maintenanceList.value = []
+      total.value = 0
+    }
   } catch (error) {
     console.error('获取维修列表失败：', error)
     ElMessage.error('获取维修列表失败')
@@ -172,11 +188,11 @@ const handleQuery = () => {
 // 重置
 const resetQuery = () => {
   queryParams.value = {
-    repairNo: '',
+    id: '',
     status: '',
-    maintainer: '',
-    pageNum: 1,
-    pageSize: 10
+    maintainer_id: '',
+    page: 1,
+    page_size: 10
   }
   getList()
 }
@@ -184,10 +200,10 @@ const resetQuery = () => {
 // 获取状态类型
 const getStatusType = (status) => {
   const statusMap = {
-    unassigned: 'info',
-    assigned: 'warning',
-    processing: 'primary',
-    completed: 'success'
+    pending: 'info',
+    processing: 'warning',
+    completed: 'success',
+    cancelled: 'danger'
   }
   return statusMap[status] || 'info'
 }
@@ -195,43 +211,42 @@ const getStatusType = (status) => {
 // 获取状态文本
 const getStatusText = (status) => {
   const statusMap = {
-    unassigned: '待分配',
-    assigned: '已分配',
+    pending: '待分配',
     processing: '维修中',
-    completed: '已完成'
+    completed: '已完成',
+    cancelled: '已取消'
   }
-  return statusMap[status] || '未知'
+  return statusMap[status] || status
 }
 
-// 分配维修人员
+// 分配对话框
 const assignDialogVisible = ref(false)
 const assignFormRef = ref()
 const assignForm = ref({
-  repairNo: '',
-  maintainer: '',
-  remark: ''
+  id: '',
+  maintainer_id: '',
+  expected_time: '',
+  result: ''
 })
 
+// 分配表单验证规则
 const assignRules = {
-  maintainer: [{ required: true, message: '请选择维修人员', trigger: 'change' }]
+  maintainer_id: [{ required: true, message: '请选择维修人员', trigger: 'change' }],
+  expected_time: [{ required: true, message: '请选择预计完成时间', trigger: 'change' }]
 }
 
+// 打开分配对话框
 const handleAssign = (row) => {
-  assignForm.value = {
-    repairNo: row.repairNo,
-    maintainer: '',
-    remark: ''
-  }
+  assignForm.value.id = row.id
   assignDialogVisible.value = true
 }
 
+// 提交分配
 const submitAssign = async () => {
-  if (!assignFormRef.value) return
   await assignFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        // TODO: 调用后端API分配维修人员
-        // await assignMaintainer(assignForm.value)
+        await axios.post('/api/maintenance', assignForm.value)
         ElMessage.success('分配成功')
         assignDialogVisible.value = false
         getList()
@@ -251,8 +266,10 @@ const handleComplete = (row) => {
     type: 'info'
   }).then(async () => {
     try {
-      // TODO: 调用后端API完成维修
-      // await completeMaintenance(row.repairNo)
+      await axios.put(`/api/maintenance/${row.id}`, {
+        status: 'completed',
+        actual_time: new Date().toISOString()
+      })
       ElMessage.success('操作成功')
       getList()
     } catch (error) {
@@ -264,21 +281,22 @@ const handleComplete = (row) => {
 
 // 查看详情
 const handleDetail = (row) => {
-  ElMessage('查看维修详情：' + row.repairNo)
+  ElMessage('查看维修详情：' + row.id)
 }
 
 // 分页
 const handleSizeChange = (val) => {
-  queryParams.value.pageSize = val
+  queryParams.value.page_size = val
   getList()
 }
 
 const handleCurrentChange = (val) => {
-  queryParams.value.pageNum = val
+  queryParams.value.page = val
   getList()
 }
 
 onMounted(() => {
+  getMaintainers()
   getList()
 })
 </script>

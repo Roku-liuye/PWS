@@ -63,7 +63,7 @@ export const userApi = {
   // 获取用户列表
   getUserList(params) {
     return request({
-      url: '/users',
+      url: '/api/users',
       method: 'get',
       params: params
     })
@@ -87,7 +87,7 @@ export const userApi = {
   // 删除用户
   deleteUser(id) {
     return request({
-      url: `/users/${id}`,
+      url: `/api/users/${id}`,
       method: 'delete'
     })
   },
@@ -149,7 +149,7 @@ export const repairApi = {
   // 获取报修列表
   getRepairList(params) {
     return request({
-      url: '/repairs',
+      url: '/api/repairs',
       method: 'get',
       params: params
     })
@@ -157,7 +157,7 @@ export const repairApi = {
   // 创建报修
   createRepair(data) {
     return request({
-      url: '/repairs',
+      url: '/api/repairs',
       method: 'post',
       data: data
     })
@@ -165,7 +165,7 @@ export const repairApi = {
   // 更新报修
   updateRepair(id, data) {
     return request({
-      url: `/repairs/${id}`,
+      url: `/api/repairs/${id}`,
       method: 'put',
       data: data
     })
@@ -177,7 +177,7 @@ export const noticeApi = {
   // 获取公告列表
   getNoticeList(params) {
     return request({
-      url: '/notices',
+      url: '/api/notices',
       method: 'get',
       params: params
     })
@@ -185,7 +185,7 @@ export const noticeApi = {
   // 创建公告
   createNotice(data) {
     return request({
-      url: '/notices',
+      url: '/api/notices',
       method: 'post',
       data: data
     })
@@ -193,7 +193,7 @@ export const noticeApi = {
   // 更新公告
   updateNotice(id, data) {
     return request({
-      url: `/notices/${id}`,
+      url: `/api/notices/${id}`,
       method: 'put',
       data: data
     })
@@ -201,8 +201,35 @@ export const noticeApi = {
   // 删除公告
   deleteNotice(id) {
     return request({
-      url: `/notices/${id}`,
+      url: `/api/notices/${id}`,
       method: 'delete'
+    })
+  }
+}
+
+// 课室相关API
+export const classroomApi = {
+  // 获取课室列表
+  getClassroomList(params) {
+    return request({
+      url: '/api/classrooms',
+      method: 'get',
+      params: params
+    })
+  },
+  // 提交课室预约
+  submitBooking(data) {
+    return request({
+      url: '/api/classroom-bookings',
+      method: 'post',
+      data: data
+    })
+  },
+  // 获取课室详情
+  getClassroomDetail(id) {
+    return request({
+      url: `/api/classrooms/${id}`,
+      method: 'get'
     })
   }
 }
@@ -212,7 +239,7 @@ export const financeApi = {
   // 获取费用列表
   getFinanceList(params) {
     return request({
-      url: '/finances',
+      url: '/api/finances',
       method: 'get',
       params: params
     })
@@ -220,7 +247,7 @@ export const financeApi = {
   // 创建费用
   createFinance(data) {
     return request({
-      url: '/finances',
+      url: '/api/finances',
       method: 'post',
       data: data
     })
@@ -228,7 +255,7 @@ export const financeApi = {
   // 更新费用
   updateFinance(id, data) {
     return request({
-      url: `/finances/${id}`,
+      url: `/api/finances/${id}`,
       method: 'put',
       data: data
     })
@@ -236,7 +263,50 @@ export const financeApi = {
   // 删除费用
   deleteFinance(id) {
     return request({
-      url: `/finances/${id}`,
+      url: `/api/finances/${id}`,
+      method: 'delete'
+    })
+  }
+}
+
+// 维修管理相关API
+export const maintenanceApi = {
+  // 获取维修人员列表
+  getMaintainers(params) {
+    return request({
+      url: '/api/users/staff',
+      method: 'get',
+      params: params
+    })
+  },
+  // 获取维修列表
+  getMaintenanceList(params) {
+    return request({
+      url: '/api/maintenance',
+      method: 'get',
+      params: params
+    })
+  },
+  // 创建维修任务
+  createMaintenance(data) {
+    return request({
+      url: '/api/maintenance',
+      method: 'post',
+      data: data
+    })
+  },
+  // 更新维修任务
+  updateMaintenance(id, data) {
+    return request({
+      url: `/api/maintenance/${id}`,
+      method: 'put',
+      data: data
+    })
+  },
+  // 删除维修任务
+  deleteMaintenance(id) {
+    return request({
+      url: `/api/maintenance/${id}`,
       method: 'delete'
     })
   }

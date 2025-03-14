@@ -10,17 +10,16 @@
     <el-card class="repair-content">
       <el-form :inline="true" :model="queryParams" class="search-form">
         <el-form-item label="报修编号">
-          <el-input v-model="queryParams.repairNo" placeholder="请输入报修编号" clearable />
+          <el-input v-model="queryParams.id" placeholder="请输入报修编号" clearable />
         </el-form-item>
         <el-form-item label="报修类型">
-          <el-select v-model="queryParams.type" placeholder="请选择报修类型" clearable>
+          <el-select style="width: 160px" v-model="queryParams.type" placeholder="请选择报修类型" clearable >
             <el-option label="设备维修" value="equipment" />
             <el-option label="设施维修" value="facility" />
-            <el-option label="其他" value="other" />
           </el-select>
         </el-form-item>
         <el-form-item label="处理状态">
-          <el-select v-model="queryParams.status" placeholder="请选择处理状态" clearable>
+          <el-select style="width: 160px" v-model="queryParams.status" placeholder="请选择处理状态" clearable>
             <el-option label="待处理" value="pending" />
             <el-option label="处理中" value="processing" />
             <el-option label="已完成" value="completed" />
@@ -37,7 +36,7 @@
       </el-form>
 
       <el-table :data="repairList" border style="width: 100%">
-        <el-table-column prop="repairNo" label="报修编号" width="120" />
+        <el-table-column prop="id" label="报修编号" width="120" />
         <el-table-column prop="type" label="报修类型" width="120">
           <template #default="scope">
             <el-tag :type="scope.row.type === 'equipment' ? 'primary' : 'success'">
@@ -47,7 +46,11 @@
         </el-table-column>
         <el-table-column prop="location" label="报修地点" width="150" />
         <el-table-column prop="description" label="故障描述" show-overflow-tooltip />
-        <el-table-column prop="submitTime" label="提交时间" width="160" />
+        <el-table-column prop="submit_time" label="提交时间" width="160">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.submit_time) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="处理状态" width="120">
           <template #default="scope">
             <el-tag :type="getStatusType(scope.row.status)">
@@ -55,7 +58,6 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="maintainer" label="维修人员" width="120" />
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="scope">
             <el-button-group>
@@ -72,8 +74,8 @@
 
       <div class="pagination">
         <el-pagination
-          v-model:current-page="queryParams.pageNum"
-          v-model:page-size="queryParams.pageSize"
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.page_size"
           :total="total"
           :page-sizes="[10, 20, 30, 50]"
           layout="total, sizes, prev, pager, next, jumper"
@@ -117,6 +119,36 @@
         </div>
       </template>
     </el-dialog>
+    <!-- 报修详情对话框 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="报修详情"
+      width="500px"
+      append-to-body
+    >
+      <el-descriptions :column="1" border>
+        <el-descriptions-item label="报修编号">{{ currentRepair?.id }}</el-descriptions-item>
+        <el-descriptions-item label="报修类型">
+          <el-tag :type="currentRepair?.type === 'equipment' ? 'primary' : 'success'">
+            {{ currentRepair?.type === '设备维修' ? '设备维修' : currentRepair?.type === 'facility' ? '设施维修' : '其他' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="报修地点">{{ currentRepair?.location }}</el-descriptions-item>
+        <el-descriptions-item label="故障描述">{{ currentRepair?.description }}</el-descriptions-item>
+        <el-descriptions-item label="处理状态">
+          <el-tag :type="getStatusType(currentRepair?.status)">
+            {{ getStatusText(currentRepair?.status) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="提交时间">{{ formatDateTime(currentRepair?.submit_time) }}</el-descriptions-item>
+        <el-descriptions-item label="完成时间">{{ currentRepair?.complete_time ? formatDateTime(currentRepair.complete_time) : '未完成' }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="detailDialogVisible = false">关 闭</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -124,30 +156,49 @@
 import { ref, onMounted } from 'vue'
 import { Plus, Search, Refresh, View, Close } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import dayjs from 'dayjs'
 
 // 查询参数
 const queryParams = ref({
-  repairNo: '',
+  id: '',
   type: '',
   status: '',
-  pageNum: 1,
-  pageSize: 10
+  page: 1,
+  page_size: 10
 })
 
 // 报修列表数据
 const repairList = ref([])
 const total = ref(0)
 
+// 报修表单相关
+const repairFormVisible = ref(false)
+const repairFormRef = ref()
+const repairForm = ref({
+  type: '',
+  location: '',
+  description: ''
+})
+
+// 详情对话框相关
+const detailDialogVisible = ref(false)
+const currentRepair = ref(null)
+
 // 导入API
 import { repairApi } from '../api/index.js'
+
+// 格式化时间
+const formatDateTime = (time) => {
+  return time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : ''
+}
 
 // 获取报修列表数据
 const getList = async () => {
   try {
     // 调用后端API获取数据
     const res = await repairApi.getRepairList(queryParams.value)
-    repairList.value = res.items || []
-    total.value = res.total || 0
+    repairList.value = res.items
+    total.value = res.total
   } catch (error) {
     console.error('获取报修列表失败：', error)
     ElMessage.error('获取报修列表失败')
@@ -156,18 +207,18 @@ const getList = async () => {
 
 // 搜索
 const handleQuery = () => {
-  queryParams.value.pageNum = 1
+  queryParams.value.page = 1
   getList()
 }
 
 // 重置
 const resetQuery = () => {
   queryParams.value = {
-    repairNo: '',
+    id: '',
     type: '',
     status: '',
-    pageNum: 1,
-    pageSize: 10
+    page: 1,
+    page_size: 10
   }
   getList()
 }
@@ -206,54 +257,55 @@ const handleSubmitRepair = () => {
 
 // 查看详情
 const handleDetail = (row) => {
-  // TODO: 实现查看详情功能
-  console.log('查看详情', row)
-}
-
-// 取消报修
-const handleCancel = (row) => {
-  ElMessageBox.confirm('确认要取消该报修吗？', '警告', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      await repairApi.updateRepair(row.id, { status: 'cancelled' })
-      ElMessage.success('取消成功')
-      getList()
-    } catch (error) {
-      console.error('取消报修失败：', error)
-      ElMessage.error('取消报修失败')
-    }
-  }).catch(() => {})
+  currentRepair.value = row
+  detailDialogVisible.value = true
 }
 
 // 提交报修表单
-const submitRepair = () => {
-  repairFormRef.value?.validate(async (valid) => {
+const submitRepair = async () => {
+  if (!repairFormRef.value) return
+  await repairFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
         await repairApi.createRepair(repairForm.value)
-        ElMessage.success('提交成功')
+        ElMessage.success('报修提交成功')
         repairFormVisible.value = false
         getList()
+        // 重置表单
+        repairFormRef.value.resetFields()
       } catch (error) {
         console.error('提交报修失败：', error)
-        ElMessage.error('提交报修失败')
+        ElMessage.error('提交报修失败：' + error.message)
       }
     }
   })
 }
 
-// 分页大小改变
+// 取消报修
+const handleCancel = async (row) => {
+  try {
+    await ElMessageBox.confirm('确认取消该报修申请吗？', '提示', {
+      type: 'warning'
+    })
+    await repairApi.updateRepair(row.id, { status: 'cancelled' })
+    ElMessage.success('报修已取消')
+    getList()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('取消报修失败：', error)
+      ElMessage.error('取消报修失败：' + error.message)
+    }
+  }
+}
+
+// 分页相关方法
 const handleSizeChange = (val) => {
-  queryParams.value.pageSize = val
+  queryParams.value.page_size = val
   getList()
 }
 
-// 当前页改变
 const handleCurrentChange = (val) => {
-  queryParams.value.pageNum = val
+  queryParams.value.page = val
   getList()
 }
 
