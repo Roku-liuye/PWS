@@ -32,7 +32,7 @@
       <el-table :data="userList" border style="width: 100%">
         <el-table-column prop="id" label="用户ID" width="80" />
         <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column prop="name" label="姓名" width="120" />
+        <el-table-column prop="real_name" label="姓名" width="120" />
         <el-table-column prop="role" label="角色" width="100">
           <template #default="scope">
             <el-tag :type="getRoleType(scope.row.role)">

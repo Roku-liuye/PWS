@@ -217,10 +217,10 @@ export const classroomApi = {
       params: params
     })
   },
-  // 提交课室预约
-  submitBooking(data) {
+  // 创建课室
+  createClassroom(data) {
     return request({
-      url: '/api/classroom-bookings',
+      url: '/api/classrooms',
       method: 'post',
       data: data
     })
@@ -231,11 +231,26 @@ export const classroomApi = {
       url: `/api/classrooms/${id}`,
       method: 'get'
     })
+  },
+  // 预约课室
+  submitBooking(data) {
+    return request({
+      url: '/api/classroom-bookings',
+      method: 'post',
+      data: data
+    })
   }
 }
 
 // 费用相关API
 export const financeApi = {
+  // 获取费用统计数据
+  getFinanceStatistics() {
+    return request({
+      url: '/api/finances/statistics',
+      method: 'get'
+    })
+  },
   // 获取费用列表
   getFinanceList(params) {
     return request({
@@ -264,49 +279,6 @@ export const financeApi = {
   deleteFinance(id) {
     return request({
       url: `/api/finances/${id}`,
-      method: 'delete'
-    })
-  }
-}
-
-// 维修管理相关API
-export const maintenanceApi = {
-  // 获取维修人员列表
-  getMaintainers(params) {
-    return request({
-      url: '/api/users/staff',
-      method: 'get',
-      params: params
-    })
-  },
-  // 获取维修列表
-  getMaintenanceList(params) {
-    return request({
-      url: '/api/maintenance',
-      method: 'get',
-      params: params
-    })
-  },
-  // 创建维修任务
-  createMaintenance(data) {
-    return request({
-      url: '/api/maintenance',
-      method: 'post',
-      data: data
-    })
-  },
-  // 更新维修任务
-  updateMaintenance(id, data) {
-    return request({
-      url: `/api/maintenance/${id}`,
-      method: 'put',
-      data: data
-    })
-  },
-  // 删除维修任务
-  deleteMaintenance(id) {
-    return request({
-      url: `/api/maintenance/${id}`,
       method: 'delete'
     })
   }

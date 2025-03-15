@@ -64,6 +64,12 @@
               <el-button type="primary" link @click="handleDetail(scope.row)">
                 <el-icon><View /></el-icon>详情
               </el-button>
+              <el-button type="primary" link @click="handleProcess(scope.row)" v-if="scope.row.status === 'pending'">
+                <el-icon><Loading /></el-icon>处理
+              </el-button>
+              <el-button type="success" link @click="handleComplete(scope.row)" v-if="scope.row.status === 'processing'">
+                <el-icon><Check /></el-icon>完成
+              </el-button>
               <el-button type="danger" link @click="handleCancel(scope.row)" v-if="scope.row.status === 'pending'">
                 <el-icon><Close /></el-icon>取消
               </el-button>
@@ -154,9 +160,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Plus, Search, Refresh, View, Close } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, View, Close, Check, Loading } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import dayjs from 'dayjs'
+import { formatDateTime } from '../utils/formatUtils'
 
 // 查询参数
 const queryParams = ref({
@@ -187,10 +193,6 @@ const currentRepair = ref(null)
 // 导入API
 import { repairApi } from '../api/index.js'
 
-// 格式化时间
-const formatDateTime = (time) => {
-  return time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : ''
-}
 
 // 获取报修列表数据
 const getList = async () => {
@@ -279,6 +281,43 @@ const submitRepair = async () => {
       }
     }
   })
+}
+
+// 完成报修
+const handleComplete = async (row) => {
+  try {
+    await ElMessageBox.confirm('确认将该报修标记为已完成吗？', '提示', {
+      type: 'warning'
+    })
+    await repairApi.updateRepair(row.id, { 
+      status: 'completed',
+      complete_time: new Date().toISOString()
+    })
+    ElMessage.success('报修已完成')
+    getList()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('完成报修失败：', error)
+      ElMessage.error('完成报修失败：' + error.message)
+    }
+  }
+}
+
+// 处理报修
+const handleProcess = async (row) => {
+  try {
+    await ElMessageBox.confirm('确认开始处理该报修吗？', '提示', {
+      type: 'warning'
+    })
+    await repairApi.updateRepair(row.id, { status: 'processing' })
+    ElMessage.success('已开始处理报修')
+    getList()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('更新报修状态失败：', error)
+      ElMessage.error('更新报修状态失败：' + error.message)
+    }
+  }
 }
 
 // 取消报修

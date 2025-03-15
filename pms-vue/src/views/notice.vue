@@ -136,9 +136,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import dayjs from 'dayjs'
 import { Plus, Edit, Delete, Search, Refresh, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { noticeApi } from '../api/index.js'
+import { formatDateTime } from '../utils/formatUtils'
 
 // 查询参数
 const queryParams = ref({
@@ -171,13 +172,7 @@ const noticeRules = {
   status: [{ required: true, message: '请选择公告状态', trigger: 'change' }]
 }
 
-// 导入API
-import { noticeApi } from '../api/index.js'
 
-
-const formatDateTime = (time) => {
-  return time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : ''
-}
 // 查询公告列表
 const handleQuery = async () => {
   try {

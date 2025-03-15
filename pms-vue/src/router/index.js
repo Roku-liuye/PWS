@@ -40,12 +40,6 @@ const router = createRouter({
           meta: { title: '报修管理', icon: 'repair' }
         },
         {
-          path: 'maintenance',
-          name: 'Maintenance',
-          component: () => import('../views/maintenance.vue'),
-          meta: { title: '保修分配', icon: 'maintenance' }
-        },
-        {
           path: 'finance',
           name: 'Finance',
           component: () => import('../views/finance.vue'),

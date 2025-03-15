@@ -2,8 +2,8 @@
   <div class="classroom-container">
     <div class="classroom-header">
       <h2>课室租借</h2>
-      <el-button type="primary" @click="handleBooking">
-        <el-icon><Plus /></el-icon>预约课室
+      <el-button type="primary" @click="handleAdd">
+        <el-icon><Plus /></el-icon>添加课室
       </el-button>
     </div>
 
@@ -14,9 +14,9 @@
         </el-form-item>
         <el-form-item label="教学楼">
           <el-select style="min-width: 160px" v-model="queryParams.building" placeholder="请选择教学楼" clearable>
-            <el-option label="A教学楼" value="A" />
-            <el-option label="B教学楼" value="B" />
-            <el-option label="C教学楼" value="C" />
+            <el-option label="教学楼A" value="教学楼A" />
+            <el-option label="教学楼B" value="教学楼B" />
+            <el-option label="教学楼C" value="教学楼C" />
           </el-select>
         </el-form-item>
         <el-form-item label="预约日期">
@@ -38,7 +38,7 @@
       </el-form>
 
       <el-table :data="classroomList" border style="width: 100%">
-        <el-table-column prop="roomNo" label="教室编号" width="120" />
+        <el-table-column prop="room_no" label="教室编号" width="120" />
         <el-table-column prop="building" label="教学楼" width="120" />
         <el-table-column prop="type" label="教室类型" width="120">
           <template #default="scope">
@@ -48,7 +48,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="capacity" label="容纳人数" width="120" />
-        <el-table-column prop="facilities" label="设施配置" show-overflow-tooltip />
+        <el-table-column prop="facilities" label="设施配置" show-overflow-tooltip>
+          <template #default="scope">
+            {{ scope.row.facilities || '暂无配置信息' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="使用状态" width="120">
           <template #default="scope">
             <el-tag :type="scope.row.status === 'available' ? 'success' : 'danger'">
@@ -87,6 +91,50 @@
         />
       </div>
     </el-card>
+
+    <!-- 添加课室对话框 -->
+    <el-dialog
+      v-model="addFormVisible"
+      title="添加课室"
+      width="500px"
+      append-to-body
+    >
+      <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="100px">
+        <el-form-item label="教室编号" prop="roomNo">
+          <el-input v-model="addForm.roomNo" placeholder="请输入教室编号" />
+        </el-form-item>
+        <el-form-item label="教学楼" prop="building">
+          <el-select v-model="addForm.building" placeholder="请选择教学楼">
+            <el-option label="教学楼A" value="教学楼A" />
+            <el-option label="教学楼B" value="教学楼B" />
+            <el-option label="教学楼C" value="教学楼C" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="教室类型" prop="type">
+          <el-select v-model="addForm.type" placeholder="请选择教室类型">
+            <el-option label="多媒体教室" value="multimedia" />
+            <el-option label="普通教室" value="normal" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="容纳人数" prop="capacity">
+          <el-input-number v-model="addForm.capacity" :min="1" />
+        </el-form-item>
+        <el-form-item label="设施配置" prop="facilities">
+          <el-input
+            v-model="addForm.facilities"
+            type="textarea"
+            placeholder="请输入设施配置信息"
+            :rows="3"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="addFormVisible = false">取 消</el-button>
+          <el-button type="primary" @click="submitAdd">确 定</el-button>
+        </div>
+      </template>
+    </el-dialog>
 
     <!-- 预约表单对话框 -->
     <el-dialog
@@ -137,7 +185,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { Plus, Search, Refresh, View, Calendar } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { classroomApi } from '../api/index.js'
 
 // 查询参数
@@ -156,9 +204,9 @@ const total = ref(0)
 // 获取教室列表数据
 const getList = async () => {
   try {
-    const { data } = await classroomApi.getClassroomList(queryParams.value)
-    classroomList.value = data.list
-    total.value = data.total
+    const res = await classroomApi.getClassroomList(queryParams.value)
+    classroomList.value = res.items || []
+    total.value = res.total || 0
   } catch (error) {
     console.error('获取教室列表失败：', error)
     ElMessage.error('获取教室列表失败')
@@ -184,8 +232,72 @@ const resetQuery = () => {
 }
 
 // 查看详情
-const handleDetail = (row) => {
-  ElMessage('查看教室详情：' + row.roomNo)
+const handleDetail = async (row) => {
+  try {
+    const res = await classroomApi.getClassroomDetail(row.id)
+    ElMessage.success('获取详情成功')
+    console.log('教室详情：', res)
+  } catch (error) {
+    console.error('获取详情失败：', error)
+    ElMessage.error('获取详情失败')
+  }
+}
+
+// 添加课室相关
+const addFormVisible = ref(false)
+const addFormRef = ref()
+const addForm = ref({
+  roomNo: '',
+  building: '',
+  type: '',
+  capacity: 0,
+  facilities: ''
+})
+
+const addRules = {
+  roomNo: [{ required: true, message: '请输入教室编号', trigger: 'blur' }],
+  building: [{ required: true, message: '请选择教学楼', trigger: 'change' }],
+  type: [{ required: true, message: '请选择教室类型', trigger: 'change' }],
+  capacity: [{ required: true, message: '请输入容纳人数', trigger: 'blur' }]
+}
+
+// 打开添加表单
+const handleAdd = () => {
+  addForm.value = {
+    roomNo: '',
+    building: '',
+    type: '',
+    capacity: 0,
+    facilities: ''
+  }
+  addFormVisible.value = true
+}
+
+// 提交添加
+const submitAdd = async () => {
+  if (!addFormRef.value) return
+  await addFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        // 转换字段名
+        const submitData = {
+          room_no: addForm.value.roomNo,
+          building: addForm.value.building,
+          type: addForm.value.type,
+          capacity: addForm.value.capacity,
+          facilities: addForm.value.facilities
+        }
+        await classroomApi.createClassroom(submitData)
+        ElMessage.success('添加成功')
+        addFormVisible.value = false
+        getList()
+      } catch (error) {
+        console.error('添加失败：', error)
+        const errorMessage = error.response?.data?.detail || error.message || '添加失败'
+        ElMessage.error(errorMessage)
+      }
+    }
+  })
 }
 
 // 预约相关
@@ -204,15 +316,16 @@ const bookingRules = {
   purpose: [{ required: true, message: '请输入用途说明', trigger: 'blur' }]
 }
 
-// 禁用日期
+// 禁用过去的日期
 const disabledDate = (time) => {
-  return time.getTime() < Date.now() - 8.64e7 // 不能选择过去的日期
+  return time.getTime() < Date.now() - 8.64e7
 }
 
 // 打开预约表单
 const handleBooking = (row) => {
   bookingForm.value = {
-    roomNo: row ? row.roomNo : '',
+    roomId: row.id,
+    roomNo: row.room_no,
     date: '',
     timeSlot: '',
     purpose: ''
@@ -226,19 +339,35 @@ const submitBooking = async () => {
   await bookingFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        await classroomApi.submitBooking(bookingForm.value)
+        await classroomApi.submitBooking({
+          classroom_id: bookingForm.value.roomId,
+          booking_date: bookingForm.value.date,
+          start_time: getTimeBySlot(bookingForm.value.timeSlot).start,
+          end_time: getTimeBySlot(bookingForm.value.timeSlot).end,
+          purpose: bookingForm.value.purpose
+        })
         ElMessage.success('预约成功')
         bookingFormVisible.value = false
         getList()
       } catch (error) {
-        console.error('提交预约失败：', error)
+        console.error('预约失败：', error)
         ElMessage.error('预约失败')
       }
     }
   })
 }
 
-// 分页
+// 根据时间段获取具体时间
+const getTimeBySlot = (slot) => {
+  const timeMap = {
+    morning: { start: '08:00', end: '12:00' },
+    afternoon: { start: '14:00', end: '18:00' },
+    evening: { start: '19:00', end: '22:00' }
+  }
+  return timeMap[slot] || { start: '', end: '' }
+}
+
+// 分页相关
 const handleSizeChange = (val) => {
   queryParams.value.pageSize = val
   getList()
@@ -260,10 +389,10 @@ onMounted(() => {
 }
 
 .classroom-header {
-  margin-bottom: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 20px;
 }
 
 .search-form {
@@ -274,9 +403,5 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
-}
-
-.dialog-footer {
-  text-align: right;
 }
 </style>

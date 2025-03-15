@@ -20,10 +20,6 @@
           <el-icon><Tools /></el-icon>
           <span>报修管理</span>
         </el-menu-item>
-        <el-menu-item index="/maintenance">
-          <el-icon><Service /></el-icon>
-          <span>保修分配</span>
-        </el-menu-item>
         <el-menu-item index="/finance">
           <el-icon><Money /></el-icon>
           <span>费用管理</span>

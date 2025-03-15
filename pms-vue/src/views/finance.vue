@@ -13,7 +13,7 @@
           <el-select style="min-width: 160px" v-model="queryParams.type" placeholder="请选择费用类型" clearable>
             <el-option label="设备采购" value="purchase" />
             <el-option label="维修费用" value="repair" />
-            <el-option label="能源消耗" value="energy" />
+            <el-option label="维护费用" value="maintenance" />
             <el-option label="其他支出" value="other" />
           </el-select>
         </el-form-item>
@@ -80,8 +80,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="description" label="费用说明" show-overflow-tooltip />
-        <el-table-column prop="createTime" label="记录时间" width="160" />
-        <el-table-column prop="operator" label="操作人" width="120" />
+        <el-table-column prop="create_time" label="记录时间" width="160">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.create_time) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="operator_name" label="操作人" width="120" />
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="scope">
             <el-button-group>
@@ -98,8 +102,8 @@
 
       <div class="pagination">
         <el-pagination
-          v-model:current-page="queryParams.pageNum"
-          v-model:page-size="queryParams.pageSize"
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.page_size"
           :total="total"
           :page-sizes="[10, 20, 30, 50]"
           layout="total, sizes, prev, pager, next, jumper"
@@ -121,7 +125,7 @@
           <el-select v-model="form.type" placeholder="请选择费用类型">
             <el-option label="设备采购" value="purchase" />
             <el-option label="维修费用" value="repair" />
-            <el-option label="能源消耗" value="energy" />
+            <el-option label="维护费用" value="maintenance" />
             <el-option label="其他支出" value="other" />
           </el-select>
         </el-form-item>
@@ -157,50 +161,86 @@
 import { ref, onMounted } from 'vue'
 import { Plus, Edit, Delete, Search, Refresh } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { financeApi, userApi } from '../api/index.js'
+import { formatDateTime } from '../utils/formatUtils'
+
+
 
 // 查询参数
 const queryParams = ref({
   type: '',
   dateRange: [],
-  pageNum: 1,
-  pageSize: 10
+  page: 1,
+  page_size: 10
 })
 
 // 费用统计数据
 const statistics = ref({
-  totalAmount: '50,000.00',
-  typeAmount: [
-    { name: '设备采购', amount: '20,000.00' },
-    { name: '维修费用', amount: '15,000.00' },
-    { name: '能源消耗', amount: '15,000.00' }
-  ]
+  totalAmount: '0.00',
+  typeAmount: []
 })
+
+// 获取费用统计数据
+const getStatistics = async () => {
+  try {
+    // 获取所有费用数据（不分页）
+    const res = await financeApi.getFinanceList({ page: 1, page_size: 9999 })
+    const allFinances = res.items || []
+
+    // 计算总支出
+    const totalAmount = allFinances.reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toFixed(2)
+
+    // 计算各类型支出
+    const typeAmountMap = allFinances.reduce((acc, item) => {
+      const type = item.type
+      acc[type] = (acc[type] || 0) + (Number(item.amount) || 0)
+      return acc
+    }, {})
+
+    // 格式化统计数据
+    const typeAmount = Object.entries(typeAmountMap).map(([type, amount]) => ({
+      name: getTypeText(type),
+      amount: amount.toFixed(2)
+    }))
+
+    // 更新统计数据
+    statistics.value = {
+      totalAmount,
+      typeAmount
+    }
+  } catch (error) {
+    console.error('获取费用统计数据失败：', error)
+    ElMessage.error('获取费用统计数据失败')
+  }
+}
 
 // 费用列表数据
 const financeList = ref([])
 const total = ref(0)
 
-// 导入API
-import { financeApi } from '../api/index.js'
-
 // 获取费用列表数据
 const getList = async () => {
   try {
-    // 处理日期范围参数
     let params = { ...queryParams.value }
     if (params.dateRange && params.dateRange.length === 2) {
       params.start_date = params.dateRange[0]
       params.end_date = params.dateRange[1]
       delete params.dateRange
     }
-    
-    // 调用后端API获取数据
+
     const res = await financeApi.getFinanceList(params)
-    financeList.value = res.items || []
+    const userRes = await userApi.getUserList()
+    const userMap = {}
+    userRes.items.forEach(user => {
+      userMap[user.id] = user.real_name
+    })
+
+    financeList.value = (res.items || []).map(item => ({
+      ...item,
+      operator_name: userMap[item.operator_id] || '未知'
+    }))
     total.value = res.total || 0
-    
-    // 更新统计数据 (这部分可能需要单独的API调用)
-    // TODO: 实现费用统计的API调用
+
   } catch (error) {
     console.error('获取费用列表失败：', error)
     ElMessage.error('获取费用列表失败')
@@ -209,7 +249,7 @@ const getList = async () => {
 
 // 搜索
 const handleQuery = () => {
-  queryParams.value.pageNum = 1
+  queryParams.value.page = 1
   getList()
 }
 
@@ -218,8 +258,8 @@ const resetQuery = () => {
   queryParams.value = {
     type: '',
     dateRange: [],
-    pageNum: 1,
-    pageSize: 10
+    page: 1,
+    page_size: 10
   }
   getList()
 }
@@ -230,7 +270,6 @@ const getTypeTag = (type) => {
     purchase: 'danger',
     repair: 'warning',
     maintenance: 'warning',
-    energy: 'success',
     other: 'info'
   }
   return typeMap[type] || 'info'
@@ -242,7 +281,6 @@ const getTypeText = (type) => {
     purchase: '设备采购',
     repair: '维修费用',
     maintenance: '维护费用',
-    energy: '能源消耗',
     other: '其他支出'
   }
   return typeMap[type] || '未知'
@@ -270,7 +308,8 @@ const handleAdd = () => {
   form.value = {
     type: '',
     amount: 0,
-    description: ''
+    description: '',
+    operator_id: ''
   }
   dialogVisible.value = true
 }
@@ -305,18 +344,26 @@ const submitForm = () => {
   formRef.value?.validate(async (valid) => {
     if (valid) {
       try {
+        const submitData = {
+          type: form.value.type,
+          amount: Number(form.value.amount),
+          description: form.value.description || ''
+        }
         if (dialogType.value === 'add') {
-          await financeApi.createFinance(form.value)
+          await financeApi.createFinance(submitData)
           ElMessage.success('新增成功')
         } else {
-          await financeApi.updateFinance(form.value.id, form.value)
+          await financeApi.updateFinance(form.value.id, submitData)
           ElMessage.success('更新成功')
         }
         dialogVisible.value = false
         getList()
       } catch (error) {
         console.error('提交费用记录失败：', error)
-        ElMessage.error('提交失败')
+        const errorMessage = error.response?.data?.detail
+          ? `提交失败：${error.response.data.detail}`
+          : '提交失败：请检查数据格式是否正确'
+        ElMessage.error(errorMessage)
       }
     }
   })
@@ -324,17 +371,18 @@ const submitForm = () => {
 
 // 分页
 const handleSizeChange = (val) => {
-  queryParams.value.pageSize = val
+  queryParams.value.page_size = val
   getList()
 }
 
 const handleCurrentChange = (val) => {
-  queryParams.value.pageNum = val
+  queryParams.value.page = val
   getList()
 }
 
 onMounted(() => {
   getList()
+  getStatistics()
 })
 </script>
 

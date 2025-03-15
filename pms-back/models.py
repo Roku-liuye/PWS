@@ -42,17 +42,6 @@ class Repair(Base):
     submit_time = Column(DateTime, default=func.now())
     complete_time = Column(DateTime)
 
-class Maintenance(Base):
-    __tablename__ = "maintenance"
-
-    id = Column(Integer, primary_key=True, index=True)
-    repair_id = Column(Integer, nullable=False)
-    maintainer_id = Column(Integer, nullable=False)
-    assign_time = Column(DateTime, default=func.now())
-    expected_time = Column(DateTime)
-    actual_time = Column(DateTime)
-    result = Column(String)
-
 
 class Notice(Base):
     __tablename__ = 'notices'
@@ -73,16 +62,11 @@ class Finance(Base):
     __tablename__ = "finances"
 
     id = Column(Integer, primary_key=True, index=True)
-    type = Column(Enum('income', 'expense'), nullable=False)
+    type = Column(Enum('repair', 'purchase', 'maintenance', 'other'), nullable=False)
     amount = Column(Float, nullable=False)
-    category = Column(String(100), nullable=False)
     description = Column(String(500))
-    record_time = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-    operator = Column(String(100), nullable=False)
+    operator_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     create_time = Column(DateTime, default=func.now())
-    update_time = Column(DateTime, default=func.now(), onupdate=func.now())
 
 
 class Classroom(Base):
@@ -91,12 +75,10 @@ class Classroom(Base):
     id = Column(Integer, primary_key=True, index=True)
     room_no = Column(String(50), unique=True, nullable=False)
     building = Column(String(50), nullable=False)
-    floor = Column(Integer, nullable=False)
+    type = Column(Enum('multimedia', 'normal'), nullable=False)
     capacity = Column(Integer, nullable=False)
+    facilities = Column(Text)
     status = Column(Enum('available', 'maintenance', 'booked'), nullable=False, default='available')
-    description = Column(String(500))
-    create_time = Column(DateTime, default=func.now())
-    update_time = Column(DateTime, default=func.now(), onupdate=func.now())
 
 class ClassroomBooking(Base):
     __tablename__ = "classroom_bookings"

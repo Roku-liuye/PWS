@@ -3,13 +3,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import timedelta
-from typing import Optional, List
+from typing import Optional
 from pydantic import BaseModel
 from sqlalchemy import or_
 from datetime import datetime
 
 from database import get_db, engine
-from models import Base, User, Asset, Repair, Notice
+from models import Base, User, Asset, Repair, Notice, Classroom, Finance
 from auth import authenticate_user, create_access_token, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
 
 # 创建用户请求模型
@@ -420,51 +420,6 @@ async def get_staff_users(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"获取维修人员列表失败：{str(e)}")
 
-# 获取维修列表
-@app.get("/api/maintenance")
-async def get_maintenance_list(
-    page_num: int = 1,
-    page_size: int = 10,
-    repair_no: Optional[str] = None,
-    status: Optional[str] = None,
-    maintainer: Optional[int] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    try:
-        query = db.query(Repair)
-        
-        # 应用筛选条件
-        if repair_no:
-            query = query.filter(Repair.repair_id == repair_no)
-        if status:
-            query = query.filter(Repair.status == status)
-        if maintainer:
-            query = query.filter(Repair.maintainer_id == maintainer)
-            
-        # 计算总数
-        total = query.count()
-        # 分页
-        repairs = query.offset((page_num - 1) * page_size).limit(page_size).all()
-        
-        return {
-            "items": [
-                {
-                    "id": repair.id,
-                    "repair_id": repair.repair_id,
-                    "type": repair.type,
-                    "location": repair.location,
-                    "description": repair.description,
-                    "status": repair.status,
-                    "maintainer_id": repair.maintainer_id,
-                    "assign_time": repair.assign_time,
-                    "expected_time": repair.expected_time
-                } for repair in repairs
-            ],
-            "total": total
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"获取维修列表失败：{str(e)}")
 
 # 获取用户列表
 @app.get("/api/users")
@@ -646,14 +601,12 @@ async def delete_notice(
 class ClassroomCreate(BaseModel):
     room_no: str
     building: str
-    floor: int
     capacity: int
     description: Optional[str] = None
 
 class ClassroomUpdate(BaseModel):
     room_no: Optional[str] = None
     building: Optional[str] = None
-    floor: Optional[int] = None
     capacity: Optional[int] = None
     status: Optional[str] = None
     description: Optional[str] = None
@@ -692,15 +645,15 @@ async def get_classrooms(
             "id": classroom.id,
             "room_no": classroom.room_no,
             "building": classroom.building,
-            "floor": classroom.floor,
+            "type": classroom.type,
             "capacity": classroom.capacity,
+            "facilities": classroom.facilities,
             "status": classroom.status,
-            "description": classroom.description
         } for classroom in classrooms]
         
-        return {"total": total, "list": result}
+        return {"items": result, "total": total}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取教室列表失败：{str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取教室列表失败b：{str(e)}")
 
 # 添加教室
 @app.post("/api/classrooms", response_model=dict)
@@ -805,7 +758,7 @@ async def get_classroom_bookings(
             "status": booking.status
         } for booking in bookings]
         
-        return {"total": total, "list": result}
+        return {"total": total, "items": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取预约列表失败：{str(e)}")
 
@@ -876,16 +829,14 @@ async def update_classroom_booking(
 class FinanceCreate(BaseModel):
     type: str
     amount: float
-    category: str
     description: Optional[str] = None
-    record_time: datetime
+    operator_id: Optional[int] = None
 
 class FinanceUpdate(BaseModel):
     type: Optional[str] = None
     amount: Optional[float] = None
-    category: Optional[str] = None
     description: Optional[str] = None
-    record_time: Optional[datetime] = None
+    create_time: Optional[datetime] = None
 
 # 获取费用列表
 @app.get("/api/finances")
@@ -917,11 +868,9 @@ async def get_finances(
                 "id": finance.id,
                 "type": finance.type,
                 "amount": finance.amount,
-                "category": finance.category,
                 "description": finance.description,
-                "record_time": finance.record_time,
-                "created_at": finance.created_at,
-                "updated_at": finance.updated_at
+                "create_time": finance.create_time,
+                "operator_id": finance.operator_id,
             } for finance in finances
         ]
     }
@@ -934,7 +883,9 @@ async def create_finance(
     current_user: User = Depends(get_current_user)
 ):
     try:
-        new_finance = Finance(**finance.dict())
+        finance_data = finance.dict()
+        finance_data["operator_id"] = current_user.id
+        new_finance = Finance(**finance_data)
         db.add(new_finance)
         db.commit()
         db.refresh(new_finance)

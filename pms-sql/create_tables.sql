@@ -45,19 +45,6 @@ CREATE TABLE IF NOT EXISTS repairs (
     FOREIGN KEY (submitter_id) REFERENCES users(id)
 );
 
--- 维修分配表
-CREATE TABLE IF NOT EXISTS maintenance (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    repair_id INT NOT NULL,
-    maintainer_id INT NOT NULL,
-    assign_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    expected_time DATETIME,
-    actual_time DATETIME,
-    result TEXT,
-    FOREIGN KEY (repair_id) REFERENCES repairs(id),
-    FOREIGN KEY (maintainer_id) REFERENCES users(id)
-);
-
 -- 费用表
 CREATE TABLE IF NOT EXISTS finances (
     id INT PRIMARY KEY AUTO_INCREMENT,
