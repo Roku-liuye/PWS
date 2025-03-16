@@ -26,9 +26,6 @@
         </el-form-item>
         <el-form-item label="角色" prop="role">
           <el-select v-model="registerForm.role" placeholder="请选择角色">
-            <el-option label="管理员" value="admin" />
-            <el-option label="职工" value="staff" />
-            <el-option label="教师" value="teacher" />
             <el-option label="学生" value="student" />
           </el-select>
         </el-form-item>
