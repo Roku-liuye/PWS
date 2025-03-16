@@ -30,7 +30,7 @@
         </el-menu-item>
         <el-menu-item index="/classroom" v-if="userInfo.role === 'student' || userInfo.role === 'teacher' || userInfo.role === 'admin'">
           <el-icon><School /></el-icon>
-          <span>租借课室</span>
+          <span>租借管理</span>
         </el-menu-item>
         <el-menu-item index="/user" v-if="userInfo.role === 'admin'">
           <el-icon><User /></el-icon>

@@ -1,0 +1,77 @@
+========= 物业管理系统后端文档 =========
+
+一、项目结构说明
+├── auth.py          # 用户认证模块(JWT令牌生成/验证)
+├── database.py      # 数据库连接配置(SQLAlchemy)
+├── main.py          # FastAPI主应用(包含所有路由)
+├── models.py        # 数据库模型定义(SQLAlchemy ORM)
+├── requirements.txt # 项目依赖清单
+
+二、核心模块功能
+
+1. 用户认证模块(auth.py)
+- 提供密码哈希验证(BCrypt算法)
+- JWT令牌生成/验证功能
+- 用户登录状态管理
+- 访问令牌有效期：30分钟
+
+2. 数据库模块(database.py)
+- 配置MySQL数据库连接
+- 提供会话管理(get_db)
+- ORM基类定义(Base)
+- 数据库地址：mysql://root:123456@localhost:3306/pms_db
+
+三、API接口规范
+
+1. 用户管理接口
+[GET] /api/users/me        # 获取当前用户信息
+[PUT] /api/users/me        # 更新用户信息
+[POST] /api/users          # 创建新用户
+[PUT] /api/users/me/password # 修改密码
+
+2. 资产接口
+[GET] /api/assets          # 获取资产列表（支持分页/筛选）
+[POST] /api/assets         # 创建新资产
+[PUT] /api/assets/{id}     # 更新资产信息
+
+四、数据库设计
+
+1. 用户表(users)
+- username   : 唯一用户名
+- role       : 角色(admin/staff/teacher/student)
+- phone      : 带格式验证的手机号
+- email      : 带格式验证的邮箱
+
+2. 资产表(assets)
+- status     : 状态(normal/repair/scrapped)
+- purchase_date : 采购日期
+- location   : 存放位置
+
+五、代码注释补充说明
+
+# auth.py 新增注释示例
+def verify_password(plain_password, hashed_password):
+    """验证密码与哈希值是否匹配
+    参数:
+        plain_password: 明文密码
+        hashed_password: 数据库存储的哈希密码
+    返回: 布尔验证结果"""
+
+# models.py 新增注释示例
+class User(Base):
+    """系统用户数据模型
+    包含字段:
+        - role: 用户角色(管理员/维修人员/教师/学生)
+        - real_name: 用户真实姓名
+        - phone: 带正则验证的手机号"""
+
+六、系统安全规范
+1. 所有API请求需携带有效JWT令牌
+2. 密码存储使用BCrypt哈希算法
+3. 用户敏感操作(删除/密码修改)需要二次确认
+4. 管理员接口需校验role=admin权限
+
+七、部署说明
+1. 安装依赖：pip install -r requirements.txt
+2. 启动服务：uvicorn main:app --reload
+3. 开发环境访问：http://localhost:8000/docs

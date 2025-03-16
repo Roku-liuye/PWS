@@ -30,25 +30,18 @@
       </el-form>
 
       <el-table :data="userList" border style="width: 100%">
-        <el-table-column prop="id" label="用户ID" width="80" />
-        <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column prop="real_name" label="姓名" width="120" />
-        <el-table-column prop="role" label="角色" width="100">
+        <el-table-column prop="id" label="用户ID" min-width="20" />
+        <el-table-column prop="username" label="用户名" min-width="30" />
+        <el-table-column prop="real_name" label="姓名" min-width="40" />
+        <el-table-column prop="role" label="角色" min-width="20">
           <template #default="scope">
             <el-tag :type="getRoleType(scope.row.role)">
               {{ getRoleText(scope.row.role) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="phone" label="联系电话" width="120" />
-        <el-table-column prop="email" label="邮箱" width="180" />
-        <el-table-column prop="status" label="状态" width="80">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 'active' ? 'success' : 'danger'">
-              {{ scope.row.status === 'active' ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
+        <el-table-column prop="phone" label="联系电话" min-width="60" />
+        <el-table-column prop="email" label="邮箱" min-width="80" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="scope">
             <el-button-group>
@@ -58,9 +51,8 @@
               <el-button type="primary" link @click="handleResetPwd(scope.row)">
                 <el-icon><Key /></el-icon>重置密码
               </el-button>
-              <el-button :type="scope.row.status === 'active' ? 'danger' : 'success'" link @click="handleToggleStatus(scope.row)">
-                <el-icon><CircleClose v-if="scope.row.status === 'active'" /><CircleCheck v-else /></el-icon>
-                {{ scope.row.status === 'active' ? '禁用' : '启用' }}
+              <el-button type="danger" link @click="handleDelete(scope.row)">
+                <el-icon><Delete /></el-icon>删除
               </el-button>
             </el-button-group>
           </template>
@@ -117,7 +109,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Plus, Edit, Search, Refresh, Key, CircleClose, CircleCheck } from '@element-plus/icons-vue'
+import { Plus, Edit, Search, Refresh, Key, Delete, CircleClose, CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 查询参数
@@ -156,6 +148,23 @@ const getRoleText = (role) => {
 
 // 导入API
 import { userApi } from '../api/index.js'
+
+// 删除用户处理函数
+const handleDelete = (row) => {
+  ElMessageBox.confirm(`确定要永久删除用户 ${row.username} 吗?`, '警告', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      await userApi.deleteUser(row.id)
+      ElMessage.success('删除用户成功')
+      handleQuery()
+    } catch (error) {
+      ElMessage.error('删除失败: ' + (error.message || '未知错误'))
+    }
+  }).catch(() => {})
+}
 
 // 查询用户列表
 const handleQuery = async () => {
@@ -235,10 +244,33 @@ const resetForm = () => {
   }
 }
 
+// 编辑用户
+const handleEdit = (row) => {
+  dialogTitle.value = '编辑用户'
+  userForm.value = { ...row }
+  dialogVisible.value = true
+}
+
 // 新增用户
 const handleAdd = () => {
   dialogTitle.value = '新增用户'
   dialogVisible.value = true
+}
+
+const handleResetPwd = (row) => {
+  ElMessageBox.confirm(`确定要重置 ${row.username} 的密码吗?`, '警告', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      await userApi.updateUser(row.id, { password: '123456' })
+      ElMessage.success('密码已重置为123456')
+      handleQuery()
+    } catch (error) {
+      ElMessage.error('重置失败: ' + (error.message || '未知错误'))
+    }
+  }).catch(() => {})
 }
 
 // 提交表单
@@ -247,13 +279,18 @@ const submitForm = async () => {
   await userFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        await userApi.createUser(userForm.value)
-        ElMessage.success('新增用户成功')
+        if (dialogTitle.value === '新增用户') {
+          await userApi.createUser(userForm.value)
+          ElMessage.success('新增用户成功')
+        } else {
+          await userApi.updateUser(userForm.value.id, userForm.value)
+          ElMessage.success('更新用户成功')
+        }
         dialogVisible.value = false
         handleQuery()
       } catch (error) {
-        console.error('新增用户失败：', error)
-        ElMessage.error('新增用户失败：' + (error.message || '未知错误'))
+        console.error('操作失败：', error)
+        ElMessage.error('操作失败：' + (error.message || '未知错误'))
       }
     }
   })

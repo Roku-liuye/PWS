@@ -2,7 +2,7 @@
   <div class="classroom-container">
     <div class="classroom-header">
       <h2>课室租借</h2>
-      <el-button type="primary" @click="handleAdd">
+      <el-button type="primary" @click="handleAdd" v-if = "userInfo.role === 'admin'">
         <el-icon><Plus /></el-icon>添加课室
       </el-button>
     </div>
@@ -229,7 +229,20 @@
 import { ref, onMounted } from 'vue'
 import { Plus, Search, Refresh, View, Calendar } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { classroomApi } from '../api/index.js'
+import { classroomApi, userApi } from '../api/index.js'
+
+
+const userInfo = ref({})
+
+// 获取用户信息
+const getUserInfo = async () => {
+  try {
+    const res = await userApi.getUserInfo()
+    userInfo.value = res
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  }
+}
 
 // 查询参数
 const queryParams = ref({
@@ -433,6 +446,7 @@ const handleCurrentChange = (val) => {
 
 onMounted(() => {
   getList()
+  getUserInfo()
 })
 </script>
 

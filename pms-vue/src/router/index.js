@@ -56,7 +56,7 @@ const router = createRouter({
           path: 'classroom',
           name: 'Classroom',
           component: () => import('../views/classroom.vue'),
-          meta: { title: '租借课室', icon: 'classroom'}
+          meta: { title: '租借管理', icon: 'classroom'}
         },
         {
           path: 'user',
