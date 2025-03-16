@@ -30,10 +30,14 @@ request.interceptors.response.use(
   },
   error => {
     console.error('响应错误:', error)
-    if (error.response && error.response.data && error.response.data.detail) {
-      return Promise.reject(new Error(error.response.data.detail))
+    if (error.response && error.response.data) {
+      // 处理后端返回的错误信息
+      const errorMessage = typeof error.response.data === 'string' 
+        ? error.response.data 
+        : error.response.data.detail || error.response.data.message || '请求失败'
+      return Promise.reject(new Error(errorMessage))
     }
-    return Promise.reject(error)
+    return Promise.reject(new Error('网络请求失败'))
   }
 )
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum, func, Float, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Enum, func, Float, Text, ForeignKey, Time
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
@@ -87,11 +87,11 @@ class ClassroomBooking(Base):
     classroom_id = Column(Integer, ForeignKey('classrooms.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     purpose = Column(String(500), nullable=False)
-    start_time = Column(DateTime, nullable=False)
-    end_time = Column(DateTime, nullable=False)
+    booking_date = Column(String(10), nullable=False)  # 使用String类型存储YYYY-MM-DD格式的日期
+    start_time = Column(Time, nullable=False)
+    end_time = Column(Time, nullable=False)
     status = Column(Enum('pending', 'approved', 'rejected'), nullable=False, default='pending')
     create_time = Column(DateTime, default=func.now())
-    update_time = Column(DateTime, default=func.now(), onupdate=func.now())
 
     classroom = relationship("Classroom")
     user = relationship("User")

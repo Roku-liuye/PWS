@@ -8,31 +8,35 @@
         background-color="#304156"
         text-color="#bfcbd9"
         active-text-color="#409EFF">
-        <el-menu-item index="/dashboard">
+        <el-menu-item index="/home">
           <el-icon><HomeFilled /></el-icon>
           <span>首页</span>
         </el-menu-item>
-        <el-menu-item index="/asset">
+        <el-menu-item index="/asset" v-if="userInfo.role === 'admin'">
           <el-icon><Files /></el-icon>
           <span>资产管理</span>
         </el-menu-item>
-        <el-menu-item index="/repair">
+        <el-menu-item index="/repair" v-if="userInfo.role === 'admin' || userInfo.role === 'staff'">
           <el-icon><Tools /></el-icon>
           <span>报修管理</span>
         </el-menu-item>
-        <el-menu-item index="/finance">
+        <el-menu-item index="/repair-submit" v-if="userInfo.role === 'student' || userInfo.role === 'teacher'">
+          <el-icon><Tools /></el-icon>
+          <span>提交报修</span>
+        </el-menu-item>
+        <el-menu-item index="/finance" v-if="userInfo.role === 'admin'">
           <el-icon><Money /></el-icon>
           <span>费用管理</span>
         </el-menu-item>
-        <el-menu-item index="/classroom">
+        <el-menu-item index="/classroom" v-if="userInfo.role === 'student' || userInfo.role === 'teacher' || userInfo.role === 'admin'">
           <el-icon><School /></el-icon>
           <span>租借课室</span>
         </el-menu-item>
-        <el-menu-item index="/user">
+        <el-menu-item index="/user" v-if="userInfo.role === 'admin'">
           <el-icon><User /></el-icon>
           <span>用户管理</span>
         </el-menu-item>
-        <el-menu-item index="/notice">
+        <el-menu-item index="/notice" v-if="userInfo.role === 'admin'">
           <el-icon><Bell /></el-icon>
           <span>公告管理</span>
         </el-menu-item>
@@ -71,7 +75,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { HomeFilled, Files, Tools, Service, Money, School, User, Bell, CaretBottom } from '@element-plus/icons-vue'
+import { HomeFilled, Files, Tools, Money, School, User, Bell, CaretBottom } from '@element-plus/icons-vue'
 import { userApi } from '../api/index'
 
 const router = useRouter()

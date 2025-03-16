@@ -95,7 +95,7 @@ const submitForm = async () => {
           new_password: form.value.newPassword
         })
         ElMessage.success('密码修改成功')
-        router.push('/dashboard')
+        router.push('/home')
       } catch (error) {
         ElMessage.error(error.message || '密码修改失败')
       }

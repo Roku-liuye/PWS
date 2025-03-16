@@ -9,7 +9,7 @@ from sqlalchemy import or_
 from datetime import datetime
 
 from database import get_db, engine
-from models import Base, User, Asset, Repair, Notice, Classroom, Finance
+from models import Base, User, Asset, Repair, Notice, Classroom, Finance, ClassroomBooking
 from auth import authenticate_user, create_access_token, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
 
 # 创建用户请求模型
@@ -601,21 +601,24 @@ async def delete_notice(
 class ClassroomCreate(BaseModel):
     room_no: str
     building: str
+    type: str
     capacity: int
-    description: Optional[str] = None
+    facilities: Optional[str] = None
 
 class ClassroomUpdate(BaseModel):
     room_no: Optional[str] = None
     building: Optional[str] = None
+    type: Optional[str] = None
     capacity: Optional[int] = None
     status: Optional[str] = None
-    description: Optional[str] = None
+    facilities: Optional[str] = None
 
 class ClassroomBookingCreate(BaseModel):
     classroom_id: int
     purpose: str
-    start_time: datetime
-    end_time: datetime
+    booking_date: str
+    start_time: str
+    end_time: str
 
 # 获取教室列表
 @app.get("/api/classrooms")
@@ -702,6 +705,30 @@ async def update_classroom(
         db.rollback()
         raise HTTPException(status_code=400, detail=f"更新失败：{str(e)}")
 
+# 获取教室详情
+@app.get("/api/classrooms/{classroom_id}")
+async def get_classroom_detail(
+    classroom_id: int,
+    db: Session = Depends(get_db)
+):
+    try:
+        # 查找教室
+        classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
+        if not classroom:
+            raise HTTPException(status_code=404, detail="教室不存在")
+        
+        return {
+            "id": classroom.id,
+            "room_no": classroom.room_no,
+            "building": classroom.building,
+            "type": classroom.type,
+            "capacity": classroom.capacity,
+            "facilities": classroom.facilities,
+            "status": classroom.status
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取教室详情失败：{str(e)}")
+
 # 删除教室
 @app.delete("/api/classrooms/{classroom_id}", response_model=dict)
 async def delete_classroom(
@@ -774,6 +801,21 @@ async def create_classroom_booking(
         classroom = db.query(Classroom).filter(Classroom.id == booking.classroom_id).first()
         if not classroom:
             raise HTTPException(status_code=404, detail="教室不存在")
+
+        # 检查教室是否可用
+        if classroom.status != "available":
+            raise HTTPException(status_code=400, detail="教室不可用")
+        
+        # 创建预约记录
+        new_booking = ClassroomBooking(
+            classroom_id=booking.classroom_id,
+            user_id=current_user.id,
+            purpose=booking.purpose,
+            booking_date=booking.booking_date,
+            start_time=booking.start_time,
+            end_time=booking.end_time,
+            status="pending"
+        )
         
         # 检查时间段是否冲突
         existing_booking = db.query(ClassroomBooking).filter(
@@ -785,15 +827,6 @@ async def create_classroom_booking(
         
         if existing_booking:
             raise HTTPException(status_code=400, detail="该时间段已被预约")
-        
-        # 创建预约
-        new_booking = ClassroomBooking(
-            classroom_id=booking.classroom_id,
-            user_id=current_user.id,
-            purpose=booking.purpose,
-            start_time=booking.start_time,
-            end_time=booking.end_time
-        )
         
         db.add(new_booking)
         db.commit()

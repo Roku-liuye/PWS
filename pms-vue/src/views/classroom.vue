@@ -81,8 +81,8 @@
 
       <div class="pagination">
         <el-pagination
-          v-model:current-page="queryParams.pageNum"
-          v-model:page-size="queryParams.pageSize"
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.page_size"
           :total="total"
           :page-sizes="[10, 20, 30, 50]"
           layout="total, sizes, prev, pager, next, jumper"
@@ -136,6 +136,49 @@
       </template>
     </el-dialog>
 
+    <!-- 详情对话框 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="教室详情"
+      width="500px"
+      append-to-body
+    >
+      <div class="classroom-detail" v-if="currentClassroom">
+        <div class="detail-item">
+          <span class="label">教室编号：</span>
+          <span class="value">{{ currentClassroom.room_no }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">教学楼：</span>
+          <span class="value">{{ currentClassroom.building }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">教室类型：</span>
+          <span class="value">
+            <el-tag :type="currentClassroom.type === 'multimedia' ? 'success' : 'info'">
+              {{ currentClassroom.type === 'multimedia' ? '多媒体教室' : '普通教室' }}
+            </el-tag>
+          </span>
+        </div>
+        <div class="detail-item">
+          <span class="label">容纳人数：</span>
+          <span class="value">{{ currentClassroom.capacity }} 人</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">设施配置：</span>
+          <span class="value">{{ currentClassroom.facilities || '暂无配置信息' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">使用状态：</span>
+          <span class="value">
+            <el-tag :type="currentClassroom.status === 'available' ? 'success' : 'danger'">
+              {{ currentClassroom.status === 'available' ? '空闲' : '已预约' }}
+            </el-tag>
+          </span>
+        </div>
+      </div>
+    </el-dialog>
+
     <!-- 预约表单对话框 -->
     <el-dialog
       v-model="bookingFormVisible"
@@ -144,12 +187,12 @@
       append-to-body
     >
       <el-form ref="bookingFormRef" :model="bookingForm" :rules="bookingRules" label-width="100px">
-        <el-form-item label="教室编号" prop="roomNo">
-          <el-input v-model="bookingForm.roomNo" disabled />
+        <el-form-item label="教室编号" prop="classroom_id">
+          <el-input v-model="bookingForm.classroom_id" disabled />
         </el-form-item>
-        <el-form-item label="预约日期" prop="date">
+        <el-form-item label="预约日期" prop="booking_date">
           <el-date-picker
-            v-model="bookingForm.date"
+            v-model="bookingForm.booking_date"
             type="date"
             placeholder="选择日期"
             value-format="YYYY-MM-DD"
@@ -193,8 +236,8 @@ const queryParams = ref({
   roomNo: '',
   building: '',
   date: '',
-  pageNum: 1,
-  pageSize: 10
+  page: 1,
+  page_size: 10
 })
 
 // 教室列表数据
@@ -215,7 +258,7 @@ const getList = async () => {
 
 // 搜索
 const handleQuery = () => {
-  queryParams.value.pageNum = 1
+  queryParams.value.page = 1
   getList()
 }
 
@@ -225,18 +268,22 @@ const resetQuery = () => {
     roomNo: '',
     building: '',
     date: '',
-    pageNum: 1,
-    pageSize: 10
+    page: 1,
+    page_size: 10
   }
   getList()
 }
+
+// 详情相关
+const detailDialogVisible = ref(false)
+const currentClassroom = ref(null)
 
 // 查看详情
 const handleDetail = async (row) => {
   try {
     const res = await classroomApi.getClassroomDetail(row.id)
-    ElMessage.success('获取详情成功')
-    console.log('教室详情：', res)
+    currentClassroom.value = res
+    detailDialogVisible.value = true
   } catch (error) {
     console.error('获取详情失败：', error)
     ElMessage.error('获取详情失败')
@@ -304,14 +351,16 @@ const submitAdd = async () => {
 const bookingFormVisible = ref(false)
 const bookingFormRef = ref()
 const bookingForm = ref({
-  roomNo: '',
-  date: '',
+  classroom_id: '',
+  booking_date: '',
   timeSlot: '',
-  purpose: ''
+  purpose: '',
+  start_time: '',
+  end_time: ''
 })
 
 const bookingRules = {
-  date: [{ required: true, message: '请选择预约日期', trigger: 'change' }],
+  booking_date: [{ required: true, message: '请选择预约日期', trigger: 'change' }],
   timeSlot: [{ required: true, message: '请选择时间段', trigger: 'change' }],
   purpose: [{ required: true, message: '请输入用途说明', trigger: 'blur' }]
 }
@@ -324,11 +373,13 @@ const disabledDate = (time) => {
 // 打开预约表单
 const handleBooking = (row) => {
   bookingForm.value = {
-    roomId: row.id,
-    roomNo: row.room_no,
-    date: '',
-    timeSlot: '',
-    purpose: ''
+    classroom_id: row.id,
+    user_id: row.user_id,
+    booking_date: row.booking_date,
+    start_time: '',
+    end_time: '',
+    purpose: '',
+    status: 'pending'
   }
   bookingFormVisible.value = true
 }
@@ -339,19 +390,21 @@ const submitBooking = async () => {
   await bookingFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
+        const timeSlot = getTimeBySlot(bookingForm.value.timeSlot)
         await classroomApi.submitBooking({
-          classroom_id: bookingForm.value.roomId,
-          booking_date: bookingForm.value.date,
-          start_time: getTimeBySlot(bookingForm.value.timeSlot).start,
-          end_time: getTimeBySlot(bookingForm.value.timeSlot).end,
-          purpose: bookingForm.value.purpose
+          classroom_id: bookingForm.value.classroom_id,
+          purpose: bookingForm.value.purpose,
+          booking_date: bookingForm.value.booking_date,
+          start_time: timeSlot.start,
+          end_time: timeSlot.end
         })
         ElMessage.success('预约成功')
         bookingFormVisible.value = false
         getList()
       } catch (error) {
         console.error('预约失败：', error)
-        ElMessage.error('预约失败')
+        const errorMessage = error.response?.data?.detail || error.message || '预约失败'
+        ElMessage.error(errorMessage)
       }
     }
   })
@@ -369,12 +422,12 @@ const getTimeBySlot = (slot) => {
 
 // 分页相关
 const handleSizeChange = (val) => {
-  queryParams.value.pageSize = val
+  queryParams.value.page_size = val
   getList()
 }
 
 const handleCurrentChange = (val) => {
-  queryParams.value.pageNum = val
+  queryParams.value.page = val
   getList()
 }
 
@@ -397,6 +450,26 @@ onMounted(() => {
 
 .search-form {
   margin-bottom: 20px;
+}
+
+.classroom-detail {
+  padding: 20px;
+}
+
+.detail-item {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.detail-item .label {
+  width: 100px;
+  color: #606266;
+}
+
+.detail-item .value {
+  flex: 1;
+  color: #303133;
 }
 
 .pagination {

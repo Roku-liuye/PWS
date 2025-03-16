@@ -12,7 +12,6 @@
 - SQLAlchemy：ORM框架
 - MySQL：数据库
 - JWT：身份认证
-- Pydantic：数据验证
 
 ## 3. 数据模型
 

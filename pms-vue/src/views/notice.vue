@@ -31,7 +31,7 @@
       <el-table :data="noticeList" border style="width: 100%">
         <el-table-column prop="id" label="编号" width="80" />
         <el-table-column prop="title" label="标题" show-overflow-tooltip />
-        <el-table-column prop="publisher_id" label="发布人" width="120" />
+        <el-table-column prop="publisher_name" label="发布人" width="120" />
         <el-table-column prop="publish_time" label="发布时间" width="160">
           <template #default="scope">
             {{ formatDateTime(scope.row.publish_time) }}
@@ -63,8 +63,8 @@
 
       <div class="pagination">
         <el-pagination
-          v-model:current-page="queryParams.pageNum"
-          v-model:page-size="queryParams.pageSize"
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.page_size"
           :total="total"
           :page-sizes="[10, 20, 30, 50]"
           layout="total, sizes, prev, pager, next, jumper"
@@ -122,7 +122,7 @@
       <div class="view-notice">
         <h3>{{ viewNotice.title }}</h3>
         <div class="notice-info">
-          <span>发布人：{{ viewNotice.publisher_id }}</span>
+          <span>发布人：{{ viewNotice.publisher_name || viewNotice.publisher_id }}</span>
           <span>发布时间：{{ formatDateTime(viewNotice.publish_time) }}</span>
           <span>状态：{{ viewNotice.status === 'published' ? '已发布' : '草稿' }}</span>
         </div>
@@ -138,15 +138,15 @@
 import { ref, onMounted } from 'vue'
 import { Plus, Edit, Delete, Search, Refresh, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { noticeApi } from '../api/index.js'
+import { noticeApi, userApi } from '../api/index.js'
 import { formatDateTime } from '../utils/formatUtils'
 
 // 查询参数
 const queryParams = ref({
   title: '',
   status: '',
-  pageNum: 1,
-  pageSize: 10
+  page: 1,
+  page_size: 10
 })
 
 // 公告列表数据
@@ -177,7 +177,27 @@ const noticeRules = {
 const handleQuery = async () => {
   try {
     const res = await noticeApi.getNoticeList(queryParams.value)
-    noticeList.value = res.items || []
+    const notices = res.items || []
+    
+    // 获取所有不重复的发布人ID
+    const publisherIds = [...new Set(notices.map(notice => notice.publisher_id))]
+    
+    // 批量获取用户信息
+    const { items: users } = await userApi.getUserList()
+    
+    // 创建用户ID到真实姓名的映射
+    const userMap = {}
+    users.forEach(user => {
+      if (user && user.id) {
+        userMap[user.id] = user.real_name
+      }
+    })
+    
+    // 更新公告列表，添加发布人真实姓名
+    noticeList.value = notices.map(notice => ({
+      ...notice,
+      publisher_name: userMap[notice.publisher_id] || notice.publisher_id
+    }))
     total.value = res.total || 0
   } catch (error) {
     console.error('获取公告列表失败：', error)
@@ -190,8 +210,8 @@ const resetQuery = () => {
   queryParams.value = {
     title: '',
     status: '',
-    pageNum: 1,
-    pageSize: 10
+    page: 1,
+    page_size: 10
   }
   handleQuery()
 }
@@ -271,13 +291,13 @@ const handleDelete = (row) => {
 
 // 分页大小改变
 const handleSizeChange = (val) => {
-  queryParams.value.pageSize = val
+  queryParams.value.page_size = val
   handleQuery()
 }
 
 // 当前页改变
 const handleCurrentChange = (val) => {
-  queryParams.value.pageNum = val
+  queryParams.value.page = val
   handleQuery()
 }
 
